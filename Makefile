@@ -1,7 +1,7 @@
 all:
 	echo "need action"
 
-boot:
+boot: tinyboot.cpp
 	g++ -std=c++11 tinyboot.cpp -o boot
 
 tiny:

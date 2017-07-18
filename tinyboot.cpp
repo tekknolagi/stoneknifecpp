@@ -10,6 +10,7 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include <stack>
 
 void debug(const char *msg) {
     fprintf(stderr, "%s\n", msg);
@@ -19,8 +20,8 @@ typedef uint8_t word;
 
 int start_address = -1;
 std::vector<word> memory;
-std::vector<word> stack;
-std::vector<word> rstack;
+std::stack<word> stack;
+std::stack<word> rstack;
 
 std::vector<word> program;
 
@@ -74,7 +75,7 @@ void eat_comment() {
 }
 
 vv push_dataspace_label(uint32_t n) {
-    return [=]() { stack.push_back(n); };
+    return [=]() { stack.push(n); };
 }
 
 void define(word name, vv action) {
@@ -89,7 +90,7 @@ void dataspace_label() {
 
 vv call_function(size_t n) {
     return [=]() {
-        rstack.push_back(pc);
+        rstack.push(pc);
         pc = n;
     };
 }
@@ -120,7 +121,7 @@ std::vector<word> as_bytes(uint32_t n) {
 
 void literal_word() {
     advance_past_whitespace();
-    std::vector<words> bytes = as_bytes(read_number());
+    std::vector<word> bytes = as_bytes(read_number());
     memory.push_back(bytes[0]);
     memory.push_back(bytes[1]);
     memory.push_back(bytes[2]);
@@ -143,6 +144,40 @@ void skip_literal_byte() {
     eat_byte(); // '
     eat_byte(); // char
 }
+
+/* */
+
+void start_conditional() {
+    stack.push(pc);
+}
+
+void end_conditional() {
+    word n = stack.top();
+    stack.pop();
+    jump_targets[n] = pc;
+}
+
+std::function<void(void)> start_loop = end_conditional;
+
+void end_loop() {
+    word n = stack.top();
+    stack.pop();
+    jump_targets[pc] = n;
+}
+
+std::unordered_map<word,vv> compile_time_dispatch = {
+    {'(', eat_comment},
+    {'v', dataspace_label},
+    {':', define_function},
+    {'b', literal_byte},
+    {'#', literal_word},
+    {'*', allocate_space},
+    {'^', set_start_address},
+    {'[', start_conditional}, {']', end_conditional},
+    {'{', start_loop}, {'}', end_loop},
+    {' ', eat_byte}, {'\n', eat_byte},
+    {'\'', skip_literal_byte},
+};
 
 int main() {
     std::cout << "stoneknifeforth, yo" << std::endl;
