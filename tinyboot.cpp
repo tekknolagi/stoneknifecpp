@@ -246,8 +246,8 @@ void fetch() {
 
 void extend_memory(uint32_t addr) {
     /* Address >100k are probably a bug */
-    if (memory.size() < addr + 1 && addr < 10000) {
-        memory.resize(addr + 1 - memory.size(), 0);
+    if (memory.size() < addr + 1 && addr < 100000) {
+        memory.resize(addr + 1, 0);
     }
 }
 
