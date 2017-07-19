@@ -64,6 +64,7 @@ void debug(const char *msg) {
 
 template<typename T>
 T pop(std::stack<T> &v) {
+    assert(!v.empty());
     T val = v.top();
     v.pop();
     return val;
