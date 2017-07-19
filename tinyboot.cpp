@@ -72,7 +72,9 @@ T pop(std::stack<T> &v) {
 
 template<typename K, typename V>
 bool intable(K &key, std::unordered_map<K, V> &table) {
+    /* These are both correct but I can't decide which is more readable. */
     return table.count(key) > 0;
+    return table.find(key) != table.end();
 }
 
 std::vector<word> memory;
