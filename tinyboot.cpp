@@ -372,10 +372,9 @@ void tbfrun() {
 }
 
 int main(int argc, char **argv) {
-    std::string digits = "0123456789";
-    for (size_t i = 0; i < 10; i++) {
-        compile_time_dispatch[digits[i]] = read_number;
-        run_time_dispatch[digits[i]] = push_literal;
+    for (char c = '0'; c <= '9'; c++) {
+        compile_time_dispatch[c] = read_number;
+        run_time_dispatch[c] = push_literal;
     }
 
     if (argc != 2) {
