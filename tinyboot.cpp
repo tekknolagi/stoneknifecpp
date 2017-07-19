@@ -249,10 +249,11 @@ void end_loop() {
 void tbfcompile() {
     while (pc < program.size()) {
         word token = get_token();
+        std::cout << "checking token " << token << std::endl;
         if (intable(token, compile_time_dispatch)) {
             compile_time_dispatch[token]();
         }
-        else if (intable(token, compile_time_dispatch)) {
+        else if (intable(token, run_time_dispatch)) {
             ; // ignore things from run-time for now
         }
         else {
