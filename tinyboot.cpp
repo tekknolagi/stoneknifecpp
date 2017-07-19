@@ -37,7 +37,7 @@ void nop();
 void skip_literal_byte();
 void start_conditional();
 void end_conditional();
-std::function<void(void)> start_loop = end_conditional;
+const vv start_loop = start_conditional;
 void end_loop();
 void tbfcompile();
 void write_out();
