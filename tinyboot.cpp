@@ -218,7 +218,7 @@ void quit() {
 void subtract() {
     int32_t x = pop(stack);
     int32_t y = pop(stack);
-    stack.push((y - x) & 0xFfffFfff);
+    stack.push(y - x);
 }
 
 void push_literal() {
