@@ -152,13 +152,12 @@ word get_token() {
 
 void eat_comment() {
     uint32_t comment_start = pc;
-    while (eat_byte() != ')')
-        ;
+    while (eat_byte() != ')') ;
     jump_targets[comment_start] = pc;
 }
 
 vv push_dataspace_label(uint32_t n) {
-    return [=]() { stack.push(n); };
+    return [n]() { stack.push(n); };
 }
 
 void define(word name, vv action) {
@@ -172,7 +171,7 @@ void dataspace_label() {
 }
 
 vv call_function(uint32_t n) {
-    return [=]() {
+    return [n]() {
         rstack.push(pc);
         pc = n;
     };
@@ -236,20 +235,16 @@ void start_conditional() {
 }
 
 void end_conditional() {
-    word n = pop(stack);
-    jump_targets[n] = pc;
+    jump_targets[pop(stack)] = pc;
 }
 
-
 void end_loop() {
-    word n = pop(stack);
-    jump_targets[pc] = n;
+    jump_targets[pc] = pop(stack);
 }
 
 void tbfcompile() {
     while (pc < program.size()) {
         word token = get_token();
-        std::cout << "checking token " << token << std::endl;
         if (intable(token, compile_time_dispatch)) {
             compile_time_dispatch[token]();
         }
@@ -273,6 +268,7 @@ void tbfcompile() {
 void write_out() {
     uint32_t count = pop(stack);
     uint32_t address = pop(stack);
+    std::cerr << "writing address " << address << ", count " << count << std::endl;
     std::string buf;
     for (uint32_t i = address; i < address+count; i++) {
         buf += memory[i];
@@ -286,8 +282,7 @@ void quit() {
 
 void subtract() {
     int32_t x = pop(stack);
-    int32_t y = pop(stack);
-    stack.push(y - x);
+    stack.push(pop(stack) - x);
 }
 
 void push_literal() {
@@ -313,7 +308,8 @@ void fetch() {
 void extend_memory(uint32_t addr) {
     /* Address >100k are probably a bug */
     if (memory.size() < addr + 1 && addr < 100000) {
-        memory.resize(addr + 1, 0);
+        size_t addrp = addr + 1;
+        memory.resize(std::max(addrp, memory.size()), 0);
     }
 }
 
@@ -382,6 +378,7 @@ void tbfrun() {
     pc = start_address;
     while (true) {
         word token = get_token();
+        // std::cout << token << std::endl;
         if (intable(token, run_time_dispatch)) {
             run_time_dispatch[token]();
         }
