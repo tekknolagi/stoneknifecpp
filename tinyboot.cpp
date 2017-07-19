@@ -157,7 +157,7 @@ void eat_comment() {
 }
 
 vv push_dataspace_label(uint32_t n) {
-    return [n]() { stack.push(n); };
+    return [=]() { stack.push(n); };
 }
 
 void define(word name, vv action) {
@@ -171,7 +171,7 @@ void dataspace_label() {
 }
 
 vv call_function(uint32_t n) {
-    return [n]() {
+    return [=]() {
         rstack.push(pc);
         pc = n;
     };
@@ -308,14 +308,13 @@ void fetch() {
 void extend_memory(uint32_t addr) {
     /* Address >100k are probably a bug */
     if (memory.size() < addr + 1 && addr < 100000) {
-        size_t addrp = addr + 1;
-        memory.resize(std::max(addrp, memory.size()), 0);
+        memory.resize(addr+1, 0);
     }
 }
 
 void store() {
     uint32_t addr = pop(stack);
-    extend_memory(addr);
+    extend_memory(addr+3); // extend already +1
     std::vector<word> bytes = as_bytes(pop(stack));
     assert(bytes.size() == 4);
     memory[addr+0] = bytes[0];
