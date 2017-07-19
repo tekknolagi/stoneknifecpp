@@ -145,7 +145,8 @@ word get_token() {
 
 void eat_comment() {
     uint32_t comment_start = pc;
-    while (eat_byte() != ')') continue;
+    while (eat_byte() != ')')
+        ;
     jump_targets[comment_start] = pc;
 }
 
