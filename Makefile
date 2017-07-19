@@ -3,6 +3,7 @@ all:
 
 boot: tinyboot.cpp
 	g++ -std=c++11 tinyboot.cpp -o boot
+	./boot tinyboot1.tbf1 > tinyboot-gen
 
 tiny:
 	nasm -f elf64 tiny.asm
