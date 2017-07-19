@@ -192,7 +192,7 @@ void tbfcompile() {
         }
         else {
             debug("Illegal instruction encountered");
-            assert(false);
+            abort();
         }
 
         advance_past_whitespace();
@@ -360,5 +360,5 @@ int main(int argc, char **argv) {
 
     tbfcompile();
     tbfrun();
-    assert(false); // tbfrun returned -- should exit
+    abort(); // tbfrun returned -- should exit
 }
