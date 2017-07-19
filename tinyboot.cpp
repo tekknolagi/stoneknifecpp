@@ -25,14 +25,14 @@ T pop(std::stack<T> &v) {
 
 typedef uint8_t word;
 
-int start_address = -1;
+int64_t start_address = -1;
 std::vector<word> memory;
-std::stack<size_t> stack;
-std::stack<size_t> rstack;
+std::stack<uint32_t> stack;
+std::stack<uint32_t> rstack;
 
 std::vector<word> program;
 
-size_t pc = 0;
+uint32_t pc = 0;
 
 std::unordered_map<uint32_t, uint32_t> jump_targets;
 
@@ -76,7 +76,7 @@ word get_token() {
 }
 
 void eat_comment() {
-    size_t comment_start = pc;
+    uint32_t comment_start = pc;
     while (eat_byte() != ')') continue;
     jump_targets[comment_start] = pc;
 }
@@ -95,7 +95,7 @@ void dataspace_label() {
     define(name, push_dataspace_label(memory.size()));
 }
 
-vv call_function(size_t n) {
+vv call_function(uint32_t n) {
     return [=]() {
         rstack.push(pc);
         pc = n;
@@ -107,7 +107,7 @@ void define_function() {
     define(name, call_function(pc));
 }
 
-size_t read_number() {
+uint32_t read_number() {
     std::string intbuf;
     char c;
     while (isdigit(c = eat_byte())) {
@@ -138,7 +138,7 @@ void literal_word() {
 
 void allocate_space() {
     advance_past_whitespace();
-    size_t n = read_number();
+    uint32_t n = read_number();
     memory.resize(memory.size() + n, 0);
 }
 
@@ -206,10 +206,10 @@ void tbfcompile() {
 /* */
 
 void write_out() {
-    size_t count = pop(stack);
-    size_t address = pop(stack);
+    uint32_t count = pop(stack);
+    uint32_t address = pop(stack);
     std::string buf;
-    for (size_t i = address; i < address+count; i++) {
+    for (uint32_t i = address; i < address+count; i++) {
         buf += memory[i];
     }
     std::cout << buf;
@@ -220,8 +220,8 @@ void quit() {
 }
 
 void subtract() {
-    uint32_t x = pop(stack);
-    uint32_t y = pop(stack);
+    int32_t x = pop(stack);
+    int32_t y = pop(stack);
     stack.push((y - x) & 0xFfffFfff);
 }
 
@@ -229,9 +229,9 @@ void push_literal() {
     stack.push(read_number());
 }
 
-size_t decode(std::vector<word> bytes) {
+int32_t decode(std::vector<word> bytes) {
     assert(bytes.size() == 4);
-    size_t rv = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
+    uint32_t rv = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
     if (rv > 0x7fffFfff) {
         rv -= 0x10000000;
     }
@@ -239,7 +239,7 @@ size_t decode(std::vector<word> bytes) {
 }
 
 void fetch() {
-    size_t addr = pop(stack);
+    uint32_t addr = pop(stack);
     std::vector<word> bytes;
     bytes.push_back(memory[addr+0]);
     bytes.push_back(memory[addr+1]);
@@ -248,7 +248,7 @@ void fetch() {
     stack.push(decode(bytes));
 }
 
-void extend_memory(size_t addr) {
+void extend_memory(uint32_t addr) {
     /* Address >100k are probably a bug */
     if (memory.size() < addr + 1 && addr < 10000) {
         memory.resize(addr + 1 - memory.size(), 0);
@@ -256,7 +256,7 @@ void extend_memory(size_t addr) {
 }
 
 void store() {
-    size_t addr = pop(stack);
+    uint32_t addr = pop(stack);
     extend_memory(addr);
     std::vector<word> bytes = as_bytes(pop(stack));
     memory[addr+0] = bytes[0];
@@ -266,14 +266,14 @@ void store() {
 }
 
 void store_byte() {
-    size_t addr = pop(stack);
+    uint32_t addr = pop(stack);
     extend_memory(addr);
     memory[addr] = pop(stack) & 255;
 }
 
 void less_than() {
-    size_t b = pop(stack);
-    size_t a = pop(stack);
+    int32_t b = pop(stack);
+    int32_t a = pop(stack);
     if (a < b)
         stack.push(1);
     else
