@@ -343,13 +343,13 @@ int main(int argc, char **argv) {
 
     if (argc != 2) {
         debug("Wrong number of arguments");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     FILE *fp = fopen(argv[1], "rb");
     if (fp == NULL) {
         debug("Could not open file for reading");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     while (!feof(fp)) {
