@@ -41,15 +41,11 @@ typedef std::function<void(void)> vv;
 std::unordered_map<word, vv> run_time_dispatch;
 
 word current_byte() {
-    if (pc >= program.size()) {
-        debug("Out of bounds in current_byte");
-    }
-
-    return program[pc];
+    return program.at(pc);
 }
 
 word eat_byte() {
-    return program[pc++];
+    return program.at(pc++);
 }
 
 bool is_whitespace(word c) {
