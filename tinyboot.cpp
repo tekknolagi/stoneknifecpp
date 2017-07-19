@@ -191,7 +191,7 @@ void literal_byte_compile() {
 }
 
 std::vector<word> as_bytes(uint32_t n) {
-    std::vector<word> v {n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255};
+    std::vector<word> v {(word)n, (word)(n >> 8), (word)(n >> 16), (word)(n >> 24)};
     return v;
 }
 
@@ -320,7 +320,7 @@ void store() {
 void store_byte() {
     uint32_t addr = pop(stack);
     extend_memory(addr);
-    memory[addr] = pop(stack) & 255;
+    memory[addr] = (word)pop(stack);
 }
 
 void less_than() {
