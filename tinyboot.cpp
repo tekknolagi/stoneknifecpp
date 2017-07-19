@@ -67,7 +67,7 @@ void advance_to_whitespace() {
 word get_token() {
     advance_past_whitespace();
     word rv = current_byte();
-    if (isdigit(rv) || rv == '\'') advance_to_whitespace();
+    if (!isdigit(rv) && rv != '\'') advance_to_whitespace();
     return rv;
 }
 
