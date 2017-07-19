@@ -258,7 +258,7 @@ void tbfcompile() {
         else {
             std::string tok = "` '";
             tok[1] = token;
-            std::string errmsg = "Illegal instruction encountered: " + tok;
+            std::string errmsg = "Illegal instruction encountered at compile time: " + tok;
             debug(errmsg.c_str());
             abort();
         }
