@@ -280,8 +280,8 @@ void return_from_function() {
 
 void read_byte() {
     int byte = getchar();
-    if (byte < 1) {
-        debug("EOF?");
+    if (byte == EOF) {
+        debug("EOF");
         stack.push(-1);
     }
     else {
