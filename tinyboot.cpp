@@ -352,8 +352,9 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    while (!feof(fp)) {
-        program.push_back(fgetc(fp));
+    int c;
+    while ((c = fgetc(fp)) != EOF) {
+        program.push_back(c);
     }
 
     tbfcompile();
