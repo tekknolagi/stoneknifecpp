@@ -381,7 +381,16 @@ void tbfrun() {
     pc = start_address;
     while (true) {
         word token = get_token();
-        run_time_dispatch[token]();
+        if (intable(token, run_time_dispatch)) {
+            run_time_dispatch[token]();
+        }
+        else {
+            std::string tok = "` '";
+            tok[1] = token;
+            std::string errmsg = "Illegal instruction encountered at run time: " + tok;
+            debug(errmsg.c_str());
+            abort();
+        }
     }
 }
 
