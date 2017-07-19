@@ -70,6 +70,11 @@ T pop(std::stack<T> &v) {
     return val;
 }
 
+template<typename K, typename V>
+bool intable(K &key, std::unordered_map<K, V> &table) {
+    return table.count(key) > 0;
+}
+
 std::vector<word> memory;
 std::stack<uint32_t> stack;
 std::stack<uint32_t> rstack;
@@ -155,7 +160,7 @@ vv push_dataspace_label(uint32_t n) {
 }
 
 void define(word name, vv action) {
-    assert(run_time_dispatch.count(name) == 0);
+    assert(!intable(name, run_time_dispatch));
     run_time_dispatch[name] = action;
 }
 
@@ -242,14 +247,17 @@ void end_loop() {
 void tbfcompile() {
     while (pc < program.size()) {
         word token = get_token();
-        if (compile_time_dispatch.count(token) > 0) {
+        if (intable(token, compile_time_dispatch)) {
             compile_time_dispatch[token]();
         }
-        else if (run_time_dispatch.count(token) > 0) {
+        else if (intable(token, compile_time_dispatch)) {
             ; // ignore things from run-time for now
         }
         else {
-            debug("Illegal instruction encountered");
+            std::string tok = "` '";
+            tok[1] = token;
+            std::string errmsg = "Illegal instruction encountered: " + tok;
+            debug(errmsg.c_str());
             abort();
         }
 
@@ -369,8 +377,10 @@ void literal_byte_run() {
 void tbfrun() {
     assert(start_address != -1);
     pc = start_address;
-    while (true)
-        run_time_dispatch[get_token()]();
+    while (true) {
+        word token = get_token();
+        run_time_dispatch[token]();
+    }
 }
 
 int main(int argc, char **argv) {
