@@ -12,44 +12,112 @@
 #include <vector>
 #include <stack>
 
+typedef uint8_t word;
+typedef std::function<void(void)> vv;
+
+word current_byte();
+word eat_byte();
+bool is_whitespace(word c);
+void advance_past_whitespace();
+void advance_to_whitespace();
+word get_token();
+void eat_comment();
+vv push_dataspace_label(uint32_t n);
+void define(word name, vv action);
+void dataspace_label();
+vv call_function(uint32_t n);
+void define_function();
+uint32_t read_number();
+void literal_byte_compile();
+std::vector<word> as_bytes(uint32_t n);
+void literal_word();
+void allocate_space();
+void set_start_address();
+void nop();
+void skip_literal_byte();
+void start_conditional();
+void end_conditional();
+const vv start_loop = start_conditional;
+void end_loop();
+void tbfcompile();
+void write_out();
+void quit();
+void subtract();
+void push_literal();
+int32_t decode(std::vector<word> bytes);
+void fetch();
+void extend_memory(uint32_t addr);
+void store();
+void store_byte();
+void less_than();
+void return_from_function();
+void read_byte();
+void jump();
+void conditional();
+void loop();
+void literal_byte_run();
+void tbfrun();
+
 void debug(const char *msg) {
     fprintf(stderr, "%s\n", msg);
 }
 
 template<typename T>
 T pop(std::stack<T> &v) {
+    assert(!v.empty());
     T val = v.top();
     v.pop();
     return val;
 }
 
-typedef uint8_t word;
-
-int start_address = -1;
 std::vector<word> memory;
-std::stack<size_t> stack;
-std::stack<size_t> rstack;
+std::stack<uint32_t> stack;
+std::stack<uint32_t> rstack;
 
 std::vector<word> program;
-
-size_t pc = 0;
+uint32_t pc = 0;
+int64_t start_address = -1;
 
 std::unordered_map<uint32_t, uint32_t> jump_targets;
 
-typedef std::function<void(void)> vv;
+std::unordered_map<word,vv> compile_time_dispatch = {
+    {'(', eat_comment},
+    {'v', dataspace_label},
+    {':', define_function},
+    {'b', literal_byte_compile},
+    {'#', literal_word},
+    {'*', allocate_space},
+    {'^', set_start_address},
+    {'[', start_conditional}, {']', end_conditional},
+    {'{', start_loop}, {'}', end_loop},
+    {' ', eat_byte}, {'\n', eat_byte},
+    {'\'', skip_literal_byte},
+};
 
-std::unordered_map<word, vv> run_time_dispatch;
+std::unordered_map<word, vv> run_time_dispatch = {
+    {'(', jump},
+    {'W', write_out},
+    {'G', read_byte},
+    {'Q', quit},
+    {'-', subtract},
+    {'<', less_than},
+    {'@', fetch},
+    {'!', store},
+    // {'f', fetch_byte}, not yet needed
+    {'s', store_byte},
+    {';', return_from_function},
+    {'[', conditional}, {']', nop},
+    {'{', nop}, {'}', loop},
+    {' ', nop}, {'\n', nop},
+    {'\'', literal_byte_run},
+};
 
 word current_byte() {
-    if (pc >= program.size()) {
-        debug("Out of bounds in current_byte");
-    }
-
-    return program[pc];
+    return program.at(pc);
 }
 
 word eat_byte() {
-    return program[pc++];
+    return program.at(pc++);
 }
 
 bool is_whitespace(word c) {
@@ -71,13 +139,14 @@ void advance_to_whitespace() {
 word get_token() {
     advance_past_whitespace();
     word rv = current_byte();
-    if (isdigit(rv) || rv == '\'') advance_to_whitespace();
+    if (!isdigit(rv) && rv != '\'') advance_to_whitespace();
     return rv;
 }
 
 void eat_comment() {
-    size_t comment_start = pc;
-    while (eat_byte() != ')') continue;
+    uint32_t comment_start = pc;
+    while (eat_byte() != ')')
+        ;
     jump_targets[comment_start] = pc;
 }
 
@@ -95,7 +164,7 @@ void dataspace_label() {
     define(name, push_dataspace_label(memory.size()));
 }
 
-vv call_function(size_t n) {
+vv call_function(uint32_t n) {
     return [=]() {
         rstack.push(pc);
         pc = n;
@@ -107,7 +176,7 @@ void define_function() {
     define(name, call_function(pc));
 }
 
-size_t read_number() {
+uint32_t read_number() {
     std::string intbuf;
     char c;
     while (isdigit(c = eat_byte())) {
@@ -122,7 +191,7 @@ void literal_byte_compile() {
 }
 
 std::vector<word> as_bytes(uint32_t n) {
-    std::vector<word> v {n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255};
+    std::vector<word> v {(word)n, (word)(n >> 8), (word)(n >> 16), (word)(n >> 24)};
     return v;
 }
 
@@ -138,7 +207,7 @@ void literal_word() {
 
 void allocate_space() {
     advance_past_whitespace();
-    size_t n = read_number();
+    uint32_t n = read_number();
     memory.resize(memory.size() + n, 0);
 }
 
@@ -164,26 +233,11 @@ void end_conditional() {
     jump_targets[n] = pc;
 }
 
-std::function<void(void)> start_loop = end_conditional;
 
 void end_loop() {
     word n = pop(stack);
     jump_targets[pc] = n;
 }
-
-std::unordered_map<word,vv> compile_time_dispatch = {
-    {'(', eat_comment},
-    {'v', dataspace_label},
-    {':', define_function},
-    {'b', literal_byte_compile},
-    {'#', literal_word},
-    {'*', allocate_space},
-    {'^', set_start_address},
-    {'[', start_conditional}, {']', end_conditional},
-    {'{', start_loop}, {'}', end_loop},
-    {' ', eat_byte}, {'\n', eat_byte},
-    {'\'', skip_literal_byte},
-};
 
 void tbfcompile() {
     while (pc < program.size()) {
@@ -192,11 +246,11 @@ void tbfcompile() {
             compile_time_dispatch[token]();
         }
         else if (run_time_dispatch.count(token) > 0) {
-            run_time_dispatch[token]();
+            ; // ignore things from run-time for now
         }
         else {
             debug("Illegal instruction encountered");
-            assert(false);
+            abort();
         }
 
         advance_past_whitespace();
@@ -206,10 +260,10 @@ void tbfcompile() {
 /* */
 
 void write_out() {
-    size_t count = pop(stack);
-    size_t address = pop(stack);
+    uint32_t count = pop(stack);
+    uint32_t address = pop(stack);
     std::string buf;
-    for (size_t i = address; i < address+count; i++) {
+    for (uint32_t i = address; i < address+count; i++) {
         buf += memory[i];
     }
     std::cout << buf;
@@ -220,26 +274,23 @@ void quit() {
 }
 
 void subtract() {
-    uint32_t x = pop(stack);
-    uint32_t y = pop(stack);
-    stack.push((y - x) & 0xFfffFfff);
+    int32_t x = pop(stack);
+    int32_t y = pop(stack);
+    stack.push(y - x);
 }
 
 void push_literal() {
     stack.push(read_number());
 }
 
-size_t decode(std::vector<word> bytes) {
+int32_t decode(std::vector<word> bytes) {
     assert(bytes.size() == 4);
-    size_t rv = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
-    if (rv > 0x7fffFfff) {
-        rv -= 0x10000000;
-    }
+    uint32_t rv = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
     return rv;
 }
 
 void fetch() {
-    size_t addr = pop(stack);
+    uint32_t addr = pop(stack);
     std::vector<word> bytes;
     bytes.push_back(memory[addr+0]);
     bytes.push_back(memory[addr+1]);
@@ -248,17 +299,18 @@ void fetch() {
     stack.push(decode(bytes));
 }
 
-void extend_memory(size_t addr) {
+void extend_memory(uint32_t addr) {
     /* Address >100k are probably a bug */
     if (memory.size() < addr + 1 && addr < 100000) {
-        memory.resize(addr + 1 - memory.size(), 0);
+        memory.resize(addr + 1, 0);
     }
 }
 
 void store() {
-    size_t addr = pop(stack);
+    uint32_t addr = pop(stack);
     extend_memory(addr);
     std::vector<word> bytes = as_bytes(pop(stack));
+    assert(bytes.size() == 4);
     memory[addr+0] = bytes[0];
     memory[addr+1] = bytes[1];
     memory[addr+2] = bytes[2];
@@ -266,14 +318,14 @@ void store() {
 }
 
 void store_byte() {
-    size_t addr = pop(stack);
+    uint32_t addr = pop(stack);
     extend_memory(addr);
-    memory[addr] = pop(stack) & 255;
+    memory[addr] = (word)pop(stack);
 }
 
 void less_than() {
-    size_t b = pop(stack);
-    size_t a = pop(stack);
+    int32_t b = pop(stack);
+    int32_t a = pop(stack);
     if (a < b)
         stack.push(1);
     else
@@ -286,8 +338,8 @@ void return_from_function() {
 
 void read_byte() {
     int byte = getchar();
-    if (byte < 1) {
-        debug("EOF?");
+    if (byte == EOF) {
+        debug("EOF");
         stack.push(-1);
     }
     else {
@@ -322,47 +374,28 @@ void tbfrun() {
 }
 
 int main(int argc, char **argv) {
-    std::string digits = "0123456789";
-    for (size_t i = 0; i < 10; i++) {
-        compile_time_dispatch[digits[i]] = read_number;
-        run_time_dispatch[digits[i]] = push_literal;
+    for (char c = '0'; c <= '9'; c++) {
+        compile_time_dispatch[c] = read_number;
+        run_time_dispatch[c] = push_literal;
     }
-
-    run_time_dispatch = {
-        {'(', jump},
-        {'W', write_out},
-        {'G', read_byte},
-        {'Q', quit},
-        {'-', subtract},
-        {'<', less_than},
-        {'@', fetch},
-        {'!', store},
-        // {'f', fetch_byte}, not yet needed
-        {'s', store_byte},
-        {';', return_from_function},
-        {'[', conditional}, {']', nop},
-        {'{', nop}, {'}', loop},
-        {' ', nop}, {'\n', nop},
-        {'\'', literal_byte_run},
-    };
-
 
     if (argc != 2) {
         debug("Wrong number of arguments");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     FILE *fp = fopen(argv[1], "rb");
     if (fp == NULL) {
         debug("Could not open file for reading");
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    while (!feof(fp)) {
-        program.push_back(fgetc(fp));
+    int c;
+    while ((c = fgetc(fp)) != EOF) {
+        program.push_back(c);
     }
 
     tbfcompile();
     tbfrun();
-    assert(false); // tbfrun returned -- should exit
+    abort(); // tbfrun returned -- should exit
 }

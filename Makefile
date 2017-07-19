@@ -2,7 +2,7 @@ all:
 	echo "need action"
 
 boot: tinyboot.cpp
-	g++ -std=c++11 tinyboot.cpp -o boot
+	g++ -std=c++11 -Wall -Wextra -pedantic tinyboot.cpp -o boot
 	./boot tinyboot1.tbf1 > tinyboot-gen
 
 tiny:
