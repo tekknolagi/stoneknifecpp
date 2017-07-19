@@ -228,9 +228,6 @@ void push_literal() {
 int32_t decode(std::vector<word> bytes) {
     assert(bytes.size() == 4);
     uint32_t rv = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
-    if (rv > 0x7fffFfff) {
-        rv -= 0x10000000;
-    }
     return rv;
 }
 
