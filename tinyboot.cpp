@@ -252,6 +252,7 @@ void store() {
     uint32_t addr = pop(stack);
     extend_memory(addr);
     std::vector<word> bytes = as_bytes(pop(stack));
+    assert(bytes.size() == 4);
     memory[addr+0] = bytes[0];
     memory[addr+1] = bytes[1];
     memory[addr+2] = bytes[2];
