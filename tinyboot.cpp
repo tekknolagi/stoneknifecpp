@@ -416,6 +416,8 @@ int main(int argc, char **argv) {
         program.push_back(c);
     }
 
+    fclose(fp);
+
     tbfcompile();
     tbfrun();
     abort(); // tbfrun returned -- should exit
