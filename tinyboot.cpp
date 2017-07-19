@@ -405,7 +405,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    FILE *fp = fopen(argv[1], "rb");
+    FILE *fp = fopen(argv[1], "r");
     if (fp == NULL) {
         debug("Could not open file for reading");
         return EXIT_FAILURE;
