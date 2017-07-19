@@ -188,7 +188,7 @@ void tbfcompile() {
             compile_time_dispatch[token]();
         }
         else if (run_time_dispatch.count(token) > 0) {
-            run_time_dispatch[token]();
+            ; // ignore things from run-time for now
         }
         else {
             debug("Illegal instruction encountered");
