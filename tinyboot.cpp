@@ -12,6 +12,52 @@
 #include <vector>
 #include <stack>
 
+typedef uint8_t word;
+typedef std::function<void(void)> vv;
+
+word current_byte();
+word eat_byte();
+bool is_whitespace(word c);
+void advance_past_whitespace();
+void advance_to_whitespace();
+word get_token();
+void eat_comment();
+vv push_dataspace_label(uint32_t n);
+void define(word name, vv action);
+void dataspace_label();
+vv call_function(uint32_t n);
+void define_function();
+uint32_t read_number();
+void literal_byte_compile();
+std::vector<word> as_bytes(uint32_t n);
+void literal_word();
+void allocate_space();
+void set_start_address();
+void nop();
+void skip_literal_byte();
+void start_conditional();
+void end_conditional();
+std::function<void(void)> start_loop = end_conditional;
+void end_loop();
+void tbfcompile();
+void write_out();
+void quit();
+void subtract();
+void push_literal();
+int32_t decode(std::vector<word> bytes);
+void fetch();
+void extend_memory(uint32_t addr);
+void store();
+void store_byte();
+void less_than();
+void return_from_function();
+void read_byte();
+void jump();
+void conditional();
+void loop();
+void literal_byte_run();
+void tbfrun();
+
 void debug(const char *msg) {
     fprintf(stderr, "%s\n", msg);
 }
@@ -23,22 +69,47 @@ T pop(std::stack<T> &v) {
     return val;
 }
 
-typedef uint8_t word;
-
-int64_t start_address = -1;
 std::vector<word> memory;
 std::stack<uint32_t> stack;
 std::stack<uint32_t> rstack;
 
 std::vector<word> program;
-
 uint32_t pc = 0;
+int64_t start_address = -1;
 
 std::unordered_map<uint32_t, uint32_t> jump_targets;
 
-typedef std::function<void(void)> vv;
+std::unordered_map<word,vv> compile_time_dispatch = {
+    {'(', eat_comment},
+    {'v', dataspace_label},
+    {':', define_function},
+    {'b', literal_byte_compile},
+    {'#', literal_word},
+    {'*', allocate_space},
+    {'^', set_start_address},
+    {'[', start_conditional}, {']', end_conditional},
+    {'{', start_loop}, {'}', end_loop},
+    {' ', eat_byte}, {'\n', eat_byte},
+    {'\'', skip_literal_byte},
+};
 
-std::unordered_map<word, vv> run_time_dispatch;
+std::unordered_map<word, vv> run_time_dispatch = {
+    {'(', jump},
+    {'W', write_out},
+    {'G', read_byte},
+    {'Q', quit},
+    {'-', subtract},
+    {'<', less_than},
+    {'@', fetch},
+    {'!', store},
+    // {'f', fetch_byte}, not yet needed
+    {'s', store_byte},
+    {';', return_from_function},
+    {'[', conditional}, {']', nop},
+    {'{', nop}, {'}', loop},
+    {' ', nop}, {'\n', nop},
+    {'\'', literal_byte_run},
+};
 
 word current_byte() {
     return program.at(pc);
@@ -160,26 +231,11 @@ void end_conditional() {
     jump_targets[n] = pc;
 }
 
-std::function<void(void)> start_loop = end_conditional;
 
 void end_loop() {
     word n = pop(stack);
     jump_targets[pc] = n;
 }
-
-std::unordered_map<word,vv> compile_time_dispatch = {
-    {'(', eat_comment},
-    {'v', dataspace_label},
-    {':', define_function},
-    {'b', literal_byte_compile},
-    {'#', literal_word},
-    {'*', allocate_space},
-    {'^', set_start_address},
-    {'[', start_conditional}, {']', end_conditional},
-    {'{', start_loop}, {'}', end_loop},
-    {' ', eat_byte}, {'\n', eat_byte},
-    {'\'', skip_literal_byte},
-};
 
 void tbfcompile() {
     while (pc < program.size()) {
@@ -321,25 +377,6 @@ int main(int argc, char **argv) {
         compile_time_dispatch[digits[i]] = read_number;
         run_time_dispatch[digits[i]] = push_literal;
     }
-
-    run_time_dispatch = {
-        {'(', jump},
-        {'W', write_out},
-        {'G', read_byte},
-        {'Q', quit},
-        {'-', subtract},
-        {'<', less_than},
-        {'@', fetch},
-        {'!', store},
-        // {'f', fetch_byte}, not yet needed
-        {'s', store_byte},
-        {';', return_from_function},
-        {'[', conditional}, {']', nop},
-        {'{', nop}, {'}', loop},
-        {' ', nop}, {'\n', nop},
-        {'\'', literal_byte_run},
-    };
-
 
     if (argc != 2) {
         debug("Wrong number of arguments");
