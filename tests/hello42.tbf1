@@ -32,12 +32,8 @@ $ — the end of the program
 v h ( ELF header, Elf32_Ehdr )
 ( ELF info from http://www.muppetlabs.com/~breadbox/software/tiny/teensy.html)
 ( but I'm using 4096 for my origin rather than 0x08048000)
-    ( e_ident:) b 127 b 69 ( E) b 76 ( L) b 70 ( F)
-                b 1 ( 32 bit) b 1 ( little endian) b 1 ( original ELF)
-                ( b 0 b 0 b 0  b 0 b 0 b 0  b 0 b 0 b 0 9 bytes of padding)
-                b 3 ( abi linux)
-                b 0 b 0 b 0 b 0
-                b 0 b 0 b 0 b 0 ( pad)
+    ( e_ident:) b 127 b 69 ( E) b 76 ( L) b 70 ( F) b 1 b 1 b 1
+                b 0 b 0 b 0  b 0 b 0 b 0  b 0 b 0 b 0 ( 9 bytes of padding)
      ( e_type:) b 2 b 0   ( e_machine:) b 3 b 0
   ( e_version:) # 1         ( e_entry:) v e # 0
                ( The program header offset is 52, the same as the header size,
