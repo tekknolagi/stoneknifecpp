@@ -52,6 +52,7 @@ void store_byte();
 void less_than();
 void return_from_function();
 void read_byte();
+void write_byte();
 void jump();
 void conditional();
 void loop();
@@ -87,23 +88,10 @@ int64_t start_address = -1;
 
 std::unordered_map<uint32_t, uint32_t> jump_targets;
 
-std::unordered_map<word,vv> compile_time_dispatch = {
-    {'(', eat_comment},
-    {'v', dataspace_label},
-    {':', define_function},
-    {'b', literal_byte_compile},
-    {'#', literal_word},
-    {'*', allocate_space},
-    {'^', set_start_address},
-    {'[', start_conditional}, {']', end_conditional},
-    {'{', start_loop}, {'}', end_loop},
-    {' ', eat_byte}, {'\n', eat_byte},
-    {'\'', skip_literal_byte},
-};
-
 std::unordered_map<word, vv> run_time_dispatch = {
     {'(', jump},
     {'W', write_out},
+    {'?', write_byte},
     {'G', read_byte},
     {'Q', quit},
     {'-', subtract},
@@ -242,28 +230,6 @@ void end_loop() {
     jump_targets[pc] = pop(stack);
 }
 
-void tbfcompile() {
-    while (pc < program.size()) {
-        word token = get_token();
-        if (intable(token, compile_time_dispatch)) {
-            compile_time_dispatch[token]();
-        }
-        else if (intable(token, run_time_dispatch)) {
-            ; // ignore things from run-time for now
-        }
-        else {
-            std::string tok = "` '";
-            tok[1] = token;
-            std::string errmsg = "Illegal instruction encountered at compile time: " + tok;
-            debug(errmsg.c_str());
-            abort();
-        }
-
-        advance_past_whitespace();
-    }
-}
-
-/* */
 
 void write_out() {
     uint32_t count = pop(stack);
@@ -353,6 +319,10 @@ void read_byte() {
     }
 }
 
+void write_byte() {
+    putchar((word)pop(stack));
+}
+
 void jump() {
     pc = jump_targets[pc];
 }
@@ -393,7 +363,6 @@ void tbfrun() {
 
 int main(int argc, char **argv) {
     for (char c = '0'; c <= '9'; c++) {
-        compile_time_dispatch[c] = read_number;
         run_time_dispatch[c] = push_literal;
     }
 
@@ -415,7 +384,70 @@ int main(int argc, char **argv) {
 
     fclose(fp);
 
-    tbfcompile();
+    // compile
+    while (pc < program.size()) {
+        word token = get_token();
+        switch (token) {
+            case '0': case '1': case '2': case '3': case '4': case '5':
+            case '6': case '7': case '8': case '9':
+                read_number();
+                break;
+            case '(':
+                eat_comment();
+                break;
+            case 'v':
+                dataspace_label();
+                break;
+            case ':':
+                define_function();
+                break;
+            case 'b':
+                literal_byte_compile();
+                break;
+            case '#':
+                literal_word();
+                break;
+            case '*':
+                allocate_space();
+                break;
+            case '^':
+                set_start_address();
+                break;
+            case '[':
+                start_conditional();
+                break;
+            case ']':
+                end_conditional();
+                break;
+            case '{':
+                start_loop();
+                break;
+            case '}':
+                end_loop();
+                break;
+            case ' ': case '\n':
+                eat_byte();
+                break;
+            case '\'':
+                skip_literal_byte();
+                break;
+            default: {
+                if (intable(token, run_time_dispatch)) {
+                    ; // ignore things from run-time for now
+                }
+                else {
+                    std::string tok = "` '";
+                    tok[1] = token;
+                    std::string errmsg = "Illegal instruction encountered at compile time: " + tok;
+                    debug(errmsg.c_str());
+                    abort();
+                }
+            }
+        }
+
+        advance_past_whitespace();
+    }
+
     tbfrun();
     abort(); // tbfrun returned -- should exit
 }
