@@ -30,16 +30,7 @@ void define_function();
 uint32_t read_number();
 void literal_byte_compile();
 std::vector<word> as_bytes(uint32_t n);
-void literal_word();
-void allocate_space();
-void set_start_address();
 void nop();
-void skip_literal_byte();
-void start_conditional();
-void end_conditional();
-const vv start_loop = start_conditional;
-void end_loop();
-void tbfcompile();
 void write_out();
 void quit();
 void subtract();
@@ -138,12 +129,6 @@ word get_token() {
     return rv;
 }
 
-void eat_comment() {
-    uint32_t comment_start = pc;
-    while (eat_byte() != ')') ;
-    jump_targets[comment_start] = pc;
-}
-
 vv push_dataspace_label(uint32_t n) {
     return [=]() { stack.push(n); };
 }
@@ -151,11 +136,6 @@ vv push_dataspace_label(uint32_t n) {
 void define(word name, vv action) {
     assert(!intable(name, run_time_dispatch));
     run_time_dispatch[name] = action;
-}
-
-void dataspace_label() {
-    word name = get_token();
-    define(name, push_dataspace_label(memory.size()));
 }
 
 vv call_function(uint32_t n) {
@@ -179,57 +159,14 @@ uint32_t read_number() {
     return std::stoi(intbuf,nullptr,10);
 }
 
-void literal_byte_compile() {
-    advance_past_whitespace();
-    memory.push_back(read_number());
-}
-
 std::vector<word> as_bytes(uint32_t n) {
     std::vector<word> v {(word)n, (word)(n >> 8), (word)(n >> 16), (word)(n >> 24)};
     return v;
 }
 
-void literal_word() {
-    advance_past_whitespace();
-    std::vector<word> bytes = as_bytes(read_number());
-    assert(bytes.size() == 4);
-    memory.push_back(bytes[0]);
-    memory.push_back(bytes[1]);
-    memory.push_back(bytes[2]);
-    memory.push_back(bytes[3]);
-}
-
-void allocate_space() {
-    advance_past_whitespace();
-    uint32_t n = read_number();
-    memory.resize(memory.size() + n, 0);
-}
-
-void set_start_address() {
-    start_address = pc;
-}
-
 void nop() {}
 
-void skip_literal_byte() {
-    eat_byte(); // '
-    eat_byte(); // char
-}
-
 /* */
-
-void start_conditional() {
-    stack.push(pc);
-}
-
-void end_conditional() {
-    jump_targets[pop(stack)] = pc;
-}
-
-void end_loop() {
-    jump_targets[pc] = pop(stack);
-}
-
 
 void write_out() {
     uint32_t count = pop(stack);
@@ -298,10 +235,7 @@ void store_byte() {
 void less_than() {
     int32_t b = pop(stack);
     int32_t a = pop(stack);
-    if (a < b)
-        stack.push(1);
-    else
-        stack.push(0);
+    stack.push((uint32_t) (a<b));
 }
 
 void return_from_function() {
@@ -392,44 +326,59 @@ int main(int argc, char **argv) {
             case '6': case '7': case '8': case '9':
                 read_number();
                 break;
-            case '(':
-                eat_comment();
+            case '(': { /* Eat a comment. */
+                uint32_t comment_start = pc;
+                while (eat_byte() != ')') ;
+                jump_targets[comment_start] = pc;
                 break;
-            case 'v':
-                dataspace_label();
+            }
+            case 'v': { /* Dataspace label. */
+                word name = get_token();
+                define(name, push_dataspace_label(memory.size()));
                 break;
+            }
             case ':':
                 define_function();
                 break;
-            case 'b':
-                literal_byte_compile();
+            case 'b': /* Literal byte. */
+                advance_past_whitespace();
+                memory.push_back(read_number());
                 break;
-            case '#':
-                literal_word();
+            case '#': { /* Literal word. */
+                advance_past_whitespace();
+                std::vector<word> bytes = as_bytes(read_number());
+                assert(bytes.size() == 4);
+                memory.push_back(bytes[0]);
+                memory.push_back(bytes[1]);
+                memory.push_back(bytes[2]);
+                memory.push_back(bytes[3]);
                 break;
-            case '*':
-                allocate_space();
+            }
+            case '*': /* Allocate space. */
+                advance_past_whitespace();
+                memory.resize(memory.size() + read_number(), 0);
                 break;
-            case '^':
-                set_start_address();
+            case '^': /* Set start address. */
+                start_address = pc;
                 break;
-            case '[':
-                start_conditional();
+            case '[': /* Start a conditional. */
+                stack.push(pc);
                 break;
-            case ']':
-                end_conditional();
+            case ']': /* End a conditional. */
+                jump_targets[pop(stack)] = pc;
                 break;
-            case '{':
-                start_loop();
+            case '{': /* Start a loop. */
+                stack.push(pc);
                 break;
-            case '}':
-                end_loop();
+            case '}': /* End a loop. */
+                jump_targets[pc] = pop(stack);
                 break;
             case ' ': case '\n':
                 eat_byte();
                 break;
-            case '\'':
-                skip_literal_byte();
+            case '\'': /* Skip a literal byte. */
+                eat_byte(); // '
+                eat_byte(); // char
                 break;
             default: {
                 if (intable(token, run_time_dispatch)) {
