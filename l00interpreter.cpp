@@ -332,10 +332,7 @@ void store_byte() {
 void less_than() {
     int32_t b = pop(stack);
     int32_t a = pop(stack);
-    if (a < b)
-        stack.push(1);
-    else
-        stack.push(0);
+    stack.push((uint32_t) (a<b));
 }
 
 void return_from_function() {
